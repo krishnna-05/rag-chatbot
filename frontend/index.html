@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG Knowledge Bot</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="header">
+            <h1>RAG Knowledge Bot</h1>
+            <p>Train the AI on any webpage, then ask it questions.</p>
+        </header>
+
+        <main class="main-content">
+            <section class="card">
+                <h2>1. Feed the Model <span id="counter-badge" class="badge">0 Sources</span></h2>
+                <form id="train-form" class="input-form">
+                    <input type="url" id="url-input" placeholder="Paste a Wikipedia or web article URL..." required>
+                    <button type="submit" id="train-btn">Train</button>
+                </form>
+                
+                <div id="progress-container" class="progress-container hidden">
+                    <div id="progress-bar" class="progress-bar"></div>
+                </div>
+
+                <div id="train-status" class="status-message hidden"></div>
+            </section>
+
+            <section class="card chat-card">
+                <h2>2. Chat with your Data</h2>
+                <div id="chat-window" class="chat-window">
+                    <p class="empty-state" id="empty-state">Train the bot above, then start chatting!</p>
+                </div>
+
+                <form id="chat-form" class="input-form chat-input">
+                    <input type="text" id="chat-input" placeholder="Ask a question about the provided URLs..." required>
+                    <button type="submit" id="chat-btn">Send</button>
+                </form>
+            </section>
+        </main>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
