@@ -41,17 +41,17 @@ Want to run this on your own machine? Follow these steps:
 git clone [https://github.com/krishnna-05/rag-chatbot.git](https://github.com/krishnna-05/rag-chatbot.git)
 cd rag-chatbot
 
-###2. Set up the Python Backend
+### 2. Set up the Python Backend
 Create a virtual environment and install the required dependencies:
 python -m venv venv
 source venv/bin/activate  # On Windows use: .\venv\Scripts\activate
 pip install -r requirements.txt
 
-###3. Add your API Key
+### 3. Add your API Key
 Create a .env file in the root directory and add your Groq API Key:
 GROQ_API_KEY=gsk_your_api_key_here
 
-###4. Start the Server
+### 4. Start the Server
 Run the FastAPI backend using Uvicorn:
 uvicorn main:app --reload --port 8000
 
@@ -59,3 +59,17 @@ uvicorn main:app --reload --port 8000
 Because the frontend is pure HTML/JS, simply open frontend/index.html in your web browser. Or, if using VS Code, use the "Live Server" extension.
 
 (Note: If running locally, make sure to change the API_BASE variable in app.js back to http://localhost:8000)
+
+## 📁 Project Structure
+```text
+rag-chatbot/
+│
+├── frontend/
+│   ├── index.html     # Main UI
+│   ├── app.js         # API logic and DOM manipulation
+│   └── style.css      # Custom styling
+│
+├── main.py            # FastAPI backend and RAG pipeline
+├── requirements.txt   # Python dependencies
+├── .env               # API keys (Not pushed to GitHub)
+└── .gitignore         # Hidden files and folders
