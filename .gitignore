@@ -1,9 +1,0 @@
-venv/
-chroma_db/
-__pycache__/
-*.pyc
-# Allow tracking frontend source files while ignoring dependencies and builds
-frontend/node_modules/
-frontend/build/
-!.gitkeep
-.env
