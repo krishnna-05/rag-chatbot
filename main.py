@@ -18,6 +18,17 @@ import httpx
 from bs4 import BeautifulSoup
 from urllib.parse import quote
 
+# LangChain Imports
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_community.vectorstores import Chroma
+from langchain_groq import ChatGroq
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import RunnablePassthrough
+from langchain_core.output_parsers import StrOutputParser
+
+# NEW: Cloud API Embeddings instead of Local
+from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
+
 app = FastAPI()
 
 app.add_middleware(
@@ -27,46 +38,32 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- TRUE LAZY LOADING ML MODELS ---
-ai_models = {}
+# --- CLOUD AI SETUP ---
+# 1. Cloud Embeddings via HuggingFace API
+embeddings = HuggingFaceInferenceAPIEmbeddings(
+    api_key=os.environ.get("HF_TOKEN"),
+    model_name="sentence-transformers/all-MiniLM-L6-v2"
+)
 
-def load_models():
-    if "embeddings" not in ai_models:
-        print("Importing heavy ML libraries (this takes a moment)...")
-        # HIDDEN IMPORTS: These only run when a user asks a question or trains a link
-        from langchain_community.embeddings import HuggingFaceEmbeddings
-        from langchain_groq import ChatGroq
+# 2. Cloud LLM via Groq API
+llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0, api_key=os.environ.get("GROQ_API_KEY"))
 
-        print("Downloading & Loading AI Models into memory...")
-        ai_models["embeddings"] = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-        ai_models["llm"] = ChatGroq(model="llama-3.3-70b-versatile", temperature=0, api_key=os.environ.get("GROQ_API_KEY"))
-        print("Models loaded successfully!")
-    return ai_models["embeddings"], ai_models["llm"]
+prompt = ChatPromptTemplate.from_template("""
+Answer the question based only on the context below.
+If you don't know the answer, say "I don't have enough information to answer that."
+
+Context:
+{context}
+
+Question: {question}
+""")
 
 def format_docs(docs):
     return "\n\n".join(doc.page_content for doc in docs)
 
 def get_chain():
-    # HIDDEN IMPORTS
-    from langchain_community.vectorstores import Chroma
-    from langchain_core.prompts import ChatPromptTemplate
-    from langchain_core.runnables import RunnablePassthrough
-    from langchain_core.output_parsers import StrOutputParser
-
-    embeddings, llm = load_models()
     db = Chroma(persist_directory="./chroma_db", embedding_function=embeddings)
     retriever = db.as_retriever(search_kwargs={"k": 3})
-
-    prompt = ChatPromptTemplate.from_template("""
-    Answer the question based only on the context below.
-    If you don't know the answer, say "I don't have enough information to answer that."
-
-    Context:
-    {context}
-
-    Question: {question}
-    """)
-
     return (
         {"context": retriever | format_docs, "question": RunnablePassthrough()}
         | prompt
@@ -113,13 +110,6 @@ async def fetch_wikipedia_text(url: str) -> str:
 @app.post("/train")
 async def train(req: TrainRequest):
     try:
-        print(f"Received train request for {req.url}")
-        # HIDDEN IMPORTS
-        from langchain_text_splitters import RecursiveCharacterTextSplitter
-        from langchain_community.vectorstores import Chroma
-
-        embeddings, llm = load_models()
-
         if "wikipedia.org/wiki/" in req.url:
             text = await fetch_wikipedia_text(req.url)
         else:
@@ -147,18 +137,15 @@ async def train(req: TrainRequest):
         return {"status": "success", "chunks": len(chunks), "url": req.url}
 
     except Exception as e:
-        print(f"Training error: {e}")
         return {"status": "error", "message": str(e)}
 
 @app.post("/chat")
 async def chat(req: ChatRequest):
     try:
-        print(f"Received chat request: {req.question}")
         chain = get_chain()
         answer = chain.invoke(req.question)
         return {"status": "success", "answer": answer}
     except Exception as e:
-        print(f"Chat error: {e}")
         return {"status": "error", "message": str(e)}
 
 @app.get("/health")
