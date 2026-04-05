@@ -26,8 +26,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 
-# NEW: Cloud API Embeddings instead of Local
-from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
+
 
 app = FastAPI()
 
@@ -38,11 +37,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- CLOUD AI SETUP ---
-# 1. Cloud Embeddings via HuggingFace API
-embeddings = HuggingFaceInferenceAPIEmbeddings(
-    api_key=os.environ.get("HF_TOKEN"),
-    model_name="sentence-transformers/all-MiniLM-L6-v2"
+from langchain_huggingface import HuggingFaceEndpointEmbeddings
+
+embeddings = HuggingFaceEndpointEmbeddings(
+    model="sentence-transformers/all-MiniLM-L6-v2",
+    huggingfacehub_api_token=os.environ.get("HF_TOKEN")
 )
 
 # 2. Cloud LLM via Groq API
