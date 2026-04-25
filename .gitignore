@@ -9,3 +9,5 @@ __pycache__/
 
 # Database (Do not upload your local embeddings)
 chroma_db/
+chroma_db_recovered_1777123699/
+chroma_db_test_temp/
