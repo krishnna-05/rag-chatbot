@@ -1,5 +1,5 @@
 // Configuration
-const API_BASE = 'https://rag-chatbot-api-2x9v.onrender.com';
+const API_BASE = 'http://localhost:8000';
 
 // DOM Elements
 const trainForm = document.getElementById('train-form');

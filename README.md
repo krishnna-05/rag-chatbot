@@ -47,18 +47,19 @@ python -m venv venv
 source venv/bin/activate  # On Windows use: .\venv\Scripts\activate
 pip install -r requirements.txt
 
-### 3. Add your API Key
-Create a .env file in the root directory and add your Groq API Key:
+### 3. Add your API Keys
+Create a .env file in the root directory and add your Groq and Hugging Face keys:
 GROQ_API_KEY=gsk_your_api_key_here
+HF_TOKEN=your_huggingface_token_here
+
+> The repository already uses `http://localhost:8000` in `frontend/app.js`, so no API_BASE changes are required for local development.
 
 ### 4. Start the Server
 Run the FastAPI backend using Uvicorn:
 uvicorn main:app --reload --port 8000
 
-###5. Launch the Frontend
-Because the frontend is pure HTML/JS, simply open frontend/index.html in your web browser. Or, if using VS Code, use the "Live Server" extension.
-
-(Note: If running locally, make sure to change the API_BASE variable in app.js back to http://localhost:8000)
+### 5. Launch the Frontend
+Because the frontend is pure HTML/JS, simply open `frontend/index.html` in your web browser. Or, if using VS Code, use the "Live Server" extension.
 
 ## 📁 Project Structure
 ```text

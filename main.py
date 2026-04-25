@@ -1,4 +1,5 @@
 import os
+import time
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -37,12 +38,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from langchain_huggingface import HuggingFaceEndpointEmbeddings
+from langchain_community.embeddings import HuggingFaceEmbeddings
 
-embeddings = HuggingFaceEndpointEmbeddings(
-    model="sentence-transformers/all-MiniLM-L6-v2",
-    huggingfacehub_api_token=os.environ.get("HF_TOKEN")
+embeddings = HuggingFaceEmbeddings(
+    model_name="sentence-transformers/all-MiniLM-L6-v2"
 )
+
+CHROMA_DIR = "./chroma_db"
 
 # 2. Cloud LLM via Groq API
 llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0, api_key=os.environ.get("GROQ_API_KEY"))
@@ -60,8 +62,23 @@ Question: {question}
 def format_docs(docs):
     return "\n\n".join(doc.page_content for doc in docs)
 
+
+def is_legacy_chroma_seqid_error(err: Exception) -> bool:
+    # Older sqlite/chroma layouts can surface this exact incompatibility.
+    return "object of type 'int' has no len()" in str(err)
+
+
+def reset_chroma_store() -> None:
+    global CHROMA_DIR
+
+    # On Windows, sqlite files can stay locked; rotate to a fresh directory.
+    timestamp = int(time.time())
+    new_dir = f"./chroma_db_recovered_{timestamp}"
+    os.makedirs(new_dir, exist_ok=True)
+    CHROMA_DIR = new_dir
+
 def get_chain():
-    db = Chroma(persist_directory="./chroma_db", embedding_function=embeddings)
+    db = Chroma(persist_directory=CHROMA_DIR, embedding_function=embeddings)
     retriever = db.as_retriever(search_kwargs={"k": 3})
     return (
         {"context": retriever | format_docs, "question": RunnablePassthrough()}
@@ -131,7 +148,15 @@ async def train(req: TrainRequest):
         splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
         chunks = splitter.create_documents([text], metadatas=[{"source": req.url}])
 
-        Chroma.from_documents(chunks, embeddings, persist_directory="./chroma_db")
+        try:
+            Chroma.from_documents(chunks, embeddings, persist_directory=CHROMA_DIR)
+        except Exception as err:
+            if not is_legacy_chroma_seqid_error(err):
+                raise
+
+            # Auto-recover from incompatible local Chroma sqlite format.
+            reset_chroma_store()
+            Chroma.from_documents(chunks, embeddings, persist_directory=CHROMA_DIR)
 
         return {"status": "success", "chunks": len(chunks), "url": req.url}
 
@@ -141,8 +166,19 @@ async def train(req: TrainRequest):
 @app.post("/chat")
 async def chat(req: ChatRequest):
     try:
-        chain = get_chain()
-        answer = chain.invoke(req.question)
+        try:
+            chain = get_chain()
+            answer = chain.invoke(req.question)
+        except Exception as err:
+            if not is_legacy_chroma_seqid_error(err):
+                raise
+
+            reset_chroma_store()
+            return {
+                "status": "error",
+                "message": "Local vector database was reset due to a legacy format issue. Please train a URL again.",
+            }
+
         return {"status": "success", "answer": answer}
     except Exception as e:
         return {"status": "error", "message": str(e)}
